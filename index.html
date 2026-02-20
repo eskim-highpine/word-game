@@ -327,6 +327,43 @@
     font-size: 13px; cursor: pointer; text-decoration: underline;
     margin-bottom: 12px;
   }
+
+  /* ======== SOUND TOGGLE ======== */
+  .sound-toggle {
+    width: 40px; height: 40px; border-radius: 12px; border: none;
+    background: #EEE; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    margin-left: auto; flex-shrink: 0;
+    transition: background 0.2s;
+  }
+  .sound-toggle.on { background: #E8F5E9; }
+  .sound-toggle.off { background: #FFEBEE; }
+
+  /* ======== SPEAK BUTTON ======== */
+  .speak-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 48px; height: 48px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.25); font-size: 24px;
+    cursor: pointer; transition: transform 0.15s, background 0.15s;
+    margin-top: 8px;
+  }
+  .speak-btn:active { transform: scale(0.85); }
+  .speak-btn.on-white { background: #F0EDFF; }
+  .speak-btn.speaking { animation: pulse-speak 0.6s ease-in-out; }
+
+  @keyframes pulse-speak {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+  }
+
+  .quiz-speak-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: #F0EDFF; font-size: 20px; cursor: pointer;
+    margin-top: 8px; transition: transform 0.15s;
+  }
+  .quiz-speak-btn:active { transform: scale(0.85); }
 </style>
 </head>
 <body>
@@ -427,17 +464,20 @@
   <div class="top-bar">
     <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
     <h2>🃏 카드 뒤집기</h2>
+    <button class="sound-toggle on" onclick="toggleSound(this)">🔊</button>
   </div>
   <div class="flash-progress" id="flashProgress">1 / 10</div>
   <div class="flash-card-container" onclick="flipCard()">
     <div class="flash-card" id="flashCard">
       <div class="flash-front">
         <div class="flash-word" id="flashWord">learn</div>
+        <button class="speak-btn" onclick="event.stopPropagation(); speakWord(currentWords[flashIdx].eng)">🔊</button>
         <div class="flash-hint">탭하면 뜻이 보여요!</div>
       </div>
       <div class="flash-back">
         <div class="flash-meaning" id="flashMeaning">배우다</div>
         <div class="flash-eng-small" id="flashEngSmall">learn</div>
+        <button class="speak-btn on-white" onclick="event.stopPropagation(); speakWord(currentWords[flashIdx].eng)">🔊</button>
       </div>
     </div>
   </div>
@@ -452,11 +492,13 @@
   <div class="top-bar">
     <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
     <h2>❓ 4지선다 퀴즈</h2>
+    <button class="sound-toggle on" onclick="toggleSound(this)">🔊</button>
   </div>
   <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="quizProgressFill"></div></div>
   <div class="quiz-question-card">
     <div class="quiz-label" id="quizLabel">다음 단어의 뜻은?</div>
     <div class="quiz-word" id="quizWord">learn</div>
+    <button class="quiz-speak-btn" id="quizSpeakBtn" onclick="speakCurrentQuizWord()">🔊</button>
   </div>
   <div class="quiz-options" id="quizOptions"></div>
 </div>
@@ -466,6 +508,7 @@
   <div class="top-bar">
     <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
     <h2>🔗 짝 맞추기</h2>
+    <button class="sound-toggle on" onclick="toggleSound(this)">🔊</button>
   </div>
   <div class="match-score" id="matchScore">0 / 10</div>
   <div class="match-grid" id="matchGrid"></div>
@@ -476,11 +519,13 @@
   <div class="top-bar">
     <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
     <h2>⌨️ 스펠링 도전</h2>
+    <button class="sound-toggle on" onclick="toggleSound(this)">🔊</button>
   </div>
   <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="spellProgressFill"></div></div>
   <div class="spell-prompt">
     <div class="spell-meaning" id="spellMeaning">배우다</div>
     <div class="spell-hint" id="spellHint">5글자</div>
+    <button class="quiz-speak-btn" onclick="speakWord(spellOrder[spellIdx]?.eng)" style="margin-top:10px;">🔊 발음 듣기</button>
   </div>
   <div class="spell-input-area" id="spellInputArea"></div>
   <div class="spell-keyboard" id="spellKeyboard"></div>
@@ -491,6 +536,7 @@
   <div class="top-bar">
     <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
     <h2>🧠 기억력 게임</h2>
+    <button class="sound-toggle on" onclick="toggleSound(this)">🔊</button>
   </div>
   <div class="memory-info">
     <span id="memoryPairs">찾은 짝: 0 / 5</span>
@@ -530,6 +576,48 @@
 let currentWords = [];
 let currentSetName = '';
 let lastGame = '';
+let soundEnabled = true;
+
+// ==================== TTS (Text-to-Speech) ====================
+function speakWord(text) {
+  if (!text || !soundEnabled) return;
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = 0.85;  // 느리게 (아이용)
+  utter.pitch = 1.0;
+  // try to pick a good English voice
+  const voices = window.speechSynthesis.getVoices();
+  const enVoice = voices.find(v => v.lang === 'en-US' && v.name.includes('Samantha'))
+    || voices.find(v => v.lang === 'en-US')
+    || voices.find(v => v.lang.startsWith('en'));
+  if (enVoice) utter.voice = enVoice;
+  window.speechSynthesis.speak(utter);
+}
+
+function toggleSound(btn) {
+  soundEnabled = !soundEnabled;
+  // update ALL toggle buttons on the page
+  document.querySelectorAll('.sound-toggle').forEach(b => {
+    b.textContent = soundEnabled ? '🔊' : '🔇';
+    b.classList.toggle('on', soundEnabled);
+    b.classList.toggle('off', !soundEnabled);
+  });
+}
+
+// preload voices (some browsers load async)
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+}
+
+function speakCurrentQuizWord() {
+  if (quizIdx < quizOrder.length) {
+    const w = quizOrder[quizIdx];
+    speakWord(quizMode === 'eng2kor' ? w.eng : null);
+  }
+}
 
 // ==================== NAVIGATION ====================
 function showScreen(id) {
@@ -692,6 +780,8 @@ function updateFlashcard() {
   document.getElementById('flashCard').classList.remove('flipped');
   document.getElementById('flashPrev').style.visibility = flashIdx === 0 ? 'hidden' : 'visible';
   document.getElementById('flashNext').textContent = flashIdx === currentWords.length - 1 ? '완료 ✓' : '다음 →';
+  // auto-speak the English word
+  setTimeout(() => speakWord(w.eng), 300);
 }
 function flipCard() { document.getElementById('flashCard').classList.toggle('flipped'); }
 function flashPrev() { if (flashIdx > 0) { flashIdx--; updateFlashcard(); } }
@@ -728,6 +818,14 @@ function renderQuiz() {
   const question = quizMode === 'eng2kor' ? w.eng : w.kor;
   document.getElementById('quizLabel').textContent = `${quizIdx + 1}/${total} ${label}`;
   document.getElementById('quizWord').textContent = question;
+  // show/hide speak button & auto-speak English word
+  const speakBtn = document.getElementById('quizSpeakBtn');
+  if (quizMode === 'eng2kor') {
+    speakBtn.style.display = 'inline-flex';
+    setTimeout(() => speakWord(w.eng), 300);
+  } else {
+    speakBtn.style.display = 'none';
+  }
 
   // build options
   const correctAns = quizMode === 'eng2kor' ? w.kor : w.eng;
@@ -748,14 +846,19 @@ function pickQuiz(el, correct) {
   const allOpts = document.querySelectorAll('.quiz-option');
   allOpts.forEach(o => o.classList.add('disabled'));
 
+  const w = quizOrder[quizIdx];
   if (el.textContent.trim() === correct) {
     el.classList.add('correct');
     quizScore++;
+    // speak the correct English word on correct answer
+    if (quizMode === 'kor2eng') speakWord(w.eng);
   } else {
     el.classList.add('wrong');
     allOpts.forEach(o => { if (o.textContent.trim() === correct) o.classList.add('correct'); });
+    // speak correct answer so they hear it
+    speakWord(w.eng);
   }
-  setTimeout(() => { quizIdx++; renderQuiz(); }, 1000);
+  setTimeout(() => { quizIdx++; renderQuiz(); }, 1200);
 }
 
 // ==================== MATCH ====================
@@ -784,6 +887,9 @@ function pickMatch(el) {
   if (el.classList.contains('matched')) return;
   if (matchSelected && matchSelected === el) { el.classList.remove('selected'); matchSelected = null; return; }
 
+  // speak English word when tapped
+  if (el.classList.contains('eng')) speakWord(el.textContent.trim());
+
   el.classList.add('selected');
   if (!matchSelected) { matchSelected = el; return; }
 
@@ -798,6 +904,9 @@ function pickMatch(el) {
     el.classList.remove('selected'); el.classList.add('matched');
     matchPairs++;
     document.getElementById('matchScore').textContent = `${matchPairs} / ${matchTotal}`;
+    // speak the matched English word
+    const engEl = typeA === 'eng' ? prev : el;
+    speakWord(engEl.textContent.trim());
     if (matchPairs === matchTotal) {
       setTimeout(() => showResult('🔗', '짝 맞추기 완료!', `${matchTotal}개 짝을 모두 찾았어요!`, '기억력이 좋아요!'), 500);
     }
@@ -864,7 +973,9 @@ function pressSpellKey(k) {
       box.textContent = spellCurrent[i];
       box.classList.add('wrong-letter');
     }
-    setTimeout(() => { spellIdx++; renderSpell(); }, 1200);
+    // speak the word so they learn the pronunciation
+    speakWord(spellCurrent);
+    setTimeout(() => { spellIdx++; renderSpell(); }, 1500);
     return;
   }
   if (k === 'back') {
@@ -895,7 +1006,9 @@ function pressSpellKey(k) {
       }
     }
     if (allCorrect) spellScore++;
-    setTimeout(() => { spellIdx++; renderSpell(); }, 1200);
+    // speak the word so they hear the pronunciation
+    speakWord(spellCurrent);
+    setTimeout(() => { spellIdx++; renderSpell(); }, 1500);
   }
 }
 
@@ -940,6 +1053,8 @@ function flipMemory(idx) {
   if (card.classList.contains('face-up') || card.classList.contains('matched')) return;
 
   card.classList.add('face-up');
+  // speak English word when card is flipped face-up
+  if (memoryCards[idx].type === 'eng') speakWord(memoryCards[idx].text);
   memoryFlipped.push(idx);
 
   if (memoryFlipped.length === 2) {
@@ -954,6 +1069,9 @@ function flipMemory(idx) {
     if (cardA.dataset.pair === cardB.dataset.pair && cardA.dataset.type !== cardB.dataset.type) {
       cardA.classList.add('matched');
       cardB.classList.add('matched');
+      // speak matched English word
+      const engIdx = memoryCards[a].type === 'eng' ? a : b;
+      speakWord(memoryCards[engIdx].text);
       memoryMatched++;
       document.getElementById('memoryPairs').textContent = `찾은 짝: ${memoryMatched} / ${memoryTotal}`;
       memoryFlipped = [];
