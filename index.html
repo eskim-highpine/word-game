@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>영단어 게임 만들기</title>
+<style>
+  :root {
+    --primary: #6C63FF;
+    --primary-light: #8B83FF;
+    --accent: #FF6B6B;
+    --success: #51CF66;
+    --warning: #FFD43B;
+    --bg: #F8F9FA;
+    --card: #FFFFFF;
+    --text: #333333;
+    --text-light: #888888;
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, 'Apple SD Gothic Neo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .screen { display: none; min-height: 100vh; padding: 20px; padding-bottom: 40px; }
+  .screen.active { display: block; }
+
+  /* ======== COMMON ======== */
+  .top-bar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; padding: 4px 0;
+  }
+  .back-btn {
+    width: 40px; height: 40px; border-radius: 12px; border: none;
+    background: #EEE; font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .top-bar h2 { font-size: 18px; }
+
+  .btn {
+    display: block; width: 100%; padding: 16px; border: none; border-radius: var(--radius);
+    font-size: 17px; font-weight: 700; cursor: pointer;
+    transition: transform 0.1s, opacity 0.1s;
+  }
+  .btn:active { transform: scale(0.97); opacity: 0.8; }
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-accent { background: var(--accent); color: white; }
+  .btn-success { background: var(--success); color: white; }
+  .btn-outline {
+    background: white; color: var(--primary);
+    border: 2px solid var(--primary);
+  }
+
+  /* ======== HOME SCREEN ======== */
+  #home { text-align: center; padding-top: 50px; }
+  .home-emoji { font-size: 64px; margin-bottom: 10px; }
+  .home-title { font-size: 28px; font-weight: 900; margin-bottom: 6px; }
+  .home-sub { color: var(--text-light); margin-bottom: 30px; font-size: 14px; }
+
+  .home-actions { display: flex; flex-direction: column; gap: 12px; max-width: 340px; margin: 0 auto; }
+
+  .saved-section { margin-top: 30px; max-width: 340px; margin-left: auto; margin-right: auto; text-align: left; }
+  .saved-section h3 { font-size: 15px; color: var(--text-light); margin-bottom: 10px; }
+  .saved-list { display: flex; flex-direction: column; gap: 8px; }
+  .saved-item {
+    background: white; border-radius: 12px; padding: 14px 16px;
+    display: flex; justify-content: space-between; align-items: center;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06); cursor: pointer;
+    transition: transform 0.1s;
+  }
+  .saved-item:active { transform: scale(0.98); }
+  .saved-item-info { flex: 1; }
+  .saved-item-title { font-weight: 700; font-size: 15px; }
+  .saved-item-preview { font-size: 12px; color: var(--text-light); margin-top: 2px; }
+  .saved-item-actions { display: flex; gap: 6px; }
+  .saved-item-actions button {
+    width: 32px; height: 32px; border-radius: 8px; border: none;
+    font-size: 14px; cursor: pointer;
+  }
+  .saved-item .play-btn { background: var(--primary); color: white; }
+  .saved-item .del-btn { background: #fee; color: var(--accent); }
+
+  /* ======== INPUT SCREEN ======== */
+  .input-set-name {
+    width: 100%; padding: 12px 16px; border: 2px solid #E0E0E0; border-radius: 12px;
+    font-size: 16px; margin-bottom: 16px; background: white;
+  }
+  .input-set-name:focus { outline: none; border-color: var(--primary); }
+
+  .word-input-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .word-input-row {
+    display: flex; gap: 8px; align-items: center;
+    background: white; border-radius: 12px; padding: 10px 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  }
+  .word-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: var(--primary); color: white;
+    font-size: 12px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .word-input-row input {
+    flex: 1; border: none; font-size: 15px; padding: 6px 4px;
+    background: transparent; min-width: 0;
+  }
+  .word-input-row input:focus { outline: none; }
+  .word-input-row input::placeholder { color: #ccc; }
+  .word-divider { color: #ddd; font-size: 18px; flex-shrink: 0; }
+
+  .input-actions { display: flex; flex-direction: column; gap: 10px; }
+
+  /* ======== GAME SELECT SCREEN ======== */
+  .game-set-title { text-align: center; font-size: 14px; color: var(--text-light); margin-bottom: 20px; }
+  .game-grid { display: flex; flex-direction: column; gap: 12px; }
+  .game-card {
+    background: white; border-radius: var(--radius); padding: 20px;
+    display: flex; align-items: center; gap: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06); cursor: pointer;
+    transition: transform 0.15s;
+    border-left: 5px solid;
+  }
+  .game-card:active { transform: scale(0.97); }
+  .game-card-icon { font-size: 36px; flex-shrink: 0; }
+  .game-card-info h3 { font-size: 17px; margin-bottom: 2px; }
+  .game-card-info p { font-size: 12px; color: var(--text-light); }
+
+  /* ======== FLASHCARD GAME ======== */
+  .flash-progress {
+    text-align: center; font-size: 14px; color: var(--text-light); margin-bottom: 16px;
+  }
+  .flash-card-container {
+    perspective: 1000px; width: 100%; max-width: 360px;
+    height: 300px; margin: 0 auto 20px auto; cursor: pointer;
+  }
+  .flash-card {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d; transition: transform 0.5s;
+  }
+  .flash-card.flipped { transform: rotateY(180deg); }
+  .flash-front, .flash-back {
+    position: absolute; width: 100%; height: 100%;
+    backface-visibility: hidden; border-radius: 20px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 20px; text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  }
+  .flash-front { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+  .flash-front .flash-word { font-size: 40px; font-weight: 900; }
+  .flash-front .flash-hint { font-size: 14px; opacity: 0.7; margin-top: 10px; }
+  .flash-back { background: white; transform: rotateY(180deg); }
+  .flash-back .flash-meaning { font-size: 30px; font-weight: 800; color: var(--primary); }
+  .flash-back .flash-eng-small { font-size: 16px; color: var(--text-light); margin-top: 8px; }
+
+  .flash-nav { display: flex; gap: 12px; max-width: 360px; margin: 0 auto; }
+  .flash-nav .btn { flex: 1; }
+
+  /* ======== QUIZ GAME ======== */
+  .quiz-progress-bar {
+    width: 100%; height: 8px; background: #eee; border-radius: 4px;
+    margin-bottom: 20px; overflow: hidden;
+  }
+  .quiz-progress-fill {
+    height: 100%; background: var(--primary); border-radius: 4px;
+    transition: width 0.3s;
+  }
+  .quiz-question-card {
+    background: white; border-radius: 20px; padding: 30px 20px;
+    text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+  }
+  .quiz-label { font-size: 13px; color: var(--text-light); margin-bottom: 8px; }
+  .quiz-word { font-size: 36px; font-weight: 900; color: var(--primary); }
+  .quiz-options { display: flex; flex-direction: column; gap: 10px; }
+  .quiz-option {
+    padding: 16px; border-radius: 14px; border: 2px solid #E8E8E8;
+    background: white; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s; text-align: left;
+  }
+  .quiz-option:active { transform: scale(0.98); }
+  .quiz-option.correct {
+    border-color: var(--success); background: #EBFBEE; color: #2B8A3E;
+  }
+  .quiz-option.wrong {
+    border-color: var(--accent); background: #FFF0F0; color: #C92A2A;
+  }
+  .quiz-option.disabled { pointer-events: none; }
+
+  /* ======== MATCH GAME ======== */
+  .match-score {
+    text-align: center; font-size: 14px; color: var(--text-light); margin-bottom: 16px;
+  }
+  .match-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  }
+  .match-tile {
+    padding: 16px 10px; border-radius: 14px; text-align: center;
+    font-size: 15px; font-weight: 700; cursor: pointer;
+    transition: all 0.2s; border: 3px solid transparent;
+    min-height: 56px; display: flex; align-items: center; justify-content: center;
+    word-break: keep-all;
+  }
+  .match-tile.eng { background: #EDF2FF; color: #364FC7; }
+  .match-tile.kor { background: #FFF4E6; color: #E8590C; }
+  .match-tile.selected { border-color: var(--primary); transform: scale(1.05); }
+  .match-tile.matched {
+    opacity: 0.4; pointer-events: none;
+    border-color: var(--success); background: #EBFBEE;
+  }
+  .match-tile.wrong-flash {
+    animation: shake 0.4s; border-color: var(--accent);
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-6px); }
+    75% { transform: translateX(6px); }
+  }
+
+  /* ======== SPELLING GAME ======== */
+  .spell-prompt {
+    background: white; border-radius: 20px; padding: 24px 20px;
+    text-align: center; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    margin-bottom: 20px;
+  }
+  .spell-meaning { font-size: 28px; font-weight: 800; color: var(--accent); }
+  .spell-hint { font-size: 13px; color: var(--text-light); margin-top: 8px; }
+
+  .spell-input-area {
+    display: flex; gap: 6px; justify-content: center;
+    flex-wrap: wrap; margin-bottom: 16px;
+  }
+  .spell-letter-box {
+    width: 38px; height: 48px; border-radius: 10px;
+    border: 2px solid #ddd; font-size: 22px; font-weight: 800;
+    text-align: center; text-transform: lowercase;
+    transition: border-color 0.2s;
+    display: flex; align-items: center; justify-content: center;
+    background: white;
+  }
+  .spell-letter-box.filled { border-color: var(--primary); color: var(--primary); }
+  .spell-letter-box.correct-letter { border-color: var(--success); color: #2B8A3E; background: #EBFBEE; }
+  .spell-letter-box.wrong-letter { border-color: var(--accent); color: #C92A2A; background: #FFF0F0; }
+
+  .spell-keyboard {
+    display: flex; flex-wrap: wrap; gap: 5px; justify-content: center;
+    max-width: 380px; margin: 0 auto 16px auto;
+  }
+  .spell-key {
+    min-width: 32px; height: 42px; border-radius: 8px;
+    border: none; background: #E9ECEF; font-size: 16px; font-weight: 600;
+    cursor: pointer; transition: all 0.1s;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 8px;
+  }
+  .spell-key:active { background: var(--primary); color: white; transform: scale(0.9); }
+  .spell-key.wide { min-width: 56px; font-size: 13px; }
+
+  /* ======== MEMORY GAME ======== */
+  .memory-info {
+    display: flex; justify-content: space-between; margin-bottom: 16px;
+    font-size: 14px; color: var(--text-light);
+  }
+  .memory-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  }
+  .memory-card-wrap {
+    aspect-ratio: 3/4; perspective: 600px; cursor: pointer;
+  }
+  .memory-card {
+    width: 100%; height: 100%; position: relative;
+    transform-style: preserve-3d; transition: transform 0.4s;
+  }
+  .memory-card.face-up { transform: rotateY(180deg); }
+  .memory-card-front, .memory-card-back {
+    position: absolute; width: 100%; height: 100%;
+    backface-visibility: hidden; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 6px; text-align: center; font-weight: 700;
+  }
+  .memory-card-front {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white; font-size: 24px;
+  }
+  .memory-card-back {
+    transform: rotateY(180deg); background: white;
+    border: 2px solid #E8E8E8; font-size: 13px; color: var(--text);
+    word-break: keep-all;
+  }
+  .memory-card.matched .memory-card-back {
+    border-color: var(--success); background: #EBFBEE;
+  }
+
+  /* ======== RESULT SCREEN ======== */
+  .result-container { text-align: center; padding-top: 40px; }
+  .result-emoji { font-size: 72px; margin-bottom: 10px; }
+  .result-title { font-size: 26px; font-weight: 900; margin-bottom: 8px; }
+  .result-score { font-size: 18px; color: var(--text-light); margin-bottom: 6px; }
+  .result-message { font-size: 15px; color: var(--primary); margin-bottom: 30px; font-weight: 600; }
+  .result-actions { display: flex; flex-direction: column; gap: 10px; max-width: 300px; margin: 0 auto; }
+
+  /* ======== MODAL ======== */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4); z-index: 100;
+    align-items: center; justify-content: center; padding: 20px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: white; border-radius: 20px; padding: 24px;
+    max-width: 340px; width: 100%; text-align: center;
+  }
+  .modal h3 { font-size: 18px; margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: var(--text-light); margin-bottom: 20px; }
+  .modal-actions { display: flex; gap: 10px; }
+  .modal-actions .btn { flex: 1; padding: 12px; font-size: 15px; }
+
+  /* ======== SAMPLE BUTTON ======== */
+  .sample-btn {
+    background: none; border: none; color: var(--primary);
+    font-size: 13px; cursor: pointer; text-decoration: underline;
+    margin-bottom: 12px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== HOME ==================== -->
+<div id="home" class="screen active">
+  <div class="home-emoji">📚🎮</div>
+  <div class="home-title">영단어 게임</div>
+  <div class="home-sub">단어 10개를 넣으면 게임이 만들어져요!</div>
+
+  <div class="home-actions">
+    <button class="btn btn-primary" onclick="showScreen('input')">✏️ 새 단어 입력하기</button>
+  </div>
+
+  <div class="saved-section">
+    <h3>📂 저장된 단어장</h3>
+    <div id="savedList" class="saved-list">
+      <div style="text-align:center; color:#ccc; font-size:13px; padding:20px;">
+        아직 저장된 단어장이 없어요
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== INPUT ==================== -->
+<div id="input" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('home')">←</button>
+    <h2>단어 입력</h2>
+  </div>
+
+  <input class="input-set-name" id="setName" type="text" placeholder="단어장 이름 (예: 우선순위 1~10)">
+
+  <button class="sample-btn" onclick="fillSample()">📝 예시 단어 채우기</button>
+
+  <div class="word-input-list" id="wordInputList"></div>
+
+  <div class="input-actions">
+    <button class="btn btn-primary" onclick="startGames()">🎮 게임 시작!</button>
+    <button class="btn btn-outline" onclick="saveAndStart()">💾 저장하고 게임 시작</button>
+  </div>
+</div>
+
+<!-- ==================== GAME SELECT ==================== -->
+<div id="gameSelect" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('home')">←</button>
+    <h2>게임 선택</h2>
+  </div>
+
+  <div class="game-set-title" id="gameSetTitle">10개 단어 준비 완료!</div>
+
+  <div class="game-grid">
+    <div class="game-card" style="border-left-color:#667eea;" onclick="startFlashcard()">
+      <div class="game-card-icon">🃏</div>
+      <div class="game-card-info">
+        <h3>카드 뒤집기</h3>
+        <p>카드를 탭해서 뜻을 확인해요</p>
+      </div>
+    </div>
+
+    <div class="game-card" style="border-left-color:#FF6B6B;" onclick="startQuiz()">
+      <div class="game-card-icon">❓</div>
+      <div class="game-card-info">
+        <h3>4지선다 퀴즈</h3>
+        <p>4개 중 정답을 골라요</p>
+      </div>
+    </div>
+
+    <div class="game-card" style="border-left-color:#FF922B;" onclick="startMatch()">
+      <div class="game-card-icon">🔗</div>
+      <div class="game-card-info">
+        <h3>짝 맞추기</h3>
+        <p>영어와 한글 짝을 찾아요</p>
+      </div>
+    </div>
+
+    <div class="game-card" style="border-left-color:#51CF66;" onclick="startSpelling()">
+      <div class="game-card-icon">⌨️</div>
+      <div class="game-card-info">
+        <h3>스펠링 도전</h3>
+        <p>뜻을 보고 영어를 입력해요</p>
+      </div>
+    </div>
+
+    <div class="game-card" style="border-left-color:#CC5DE8;" onclick="startMemory()">
+      <div class="game-card-icon">🧠</div>
+      <div class="game-card-info">
+        <h3>기억력 게임</h3>
+        <p>카드를 뒤집어 짝을 찾아요</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== FLASHCARD ==================== -->
+<div id="flashcard" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
+    <h2>🃏 카드 뒤집기</h2>
+  </div>
+  <div class="flash-progress" id="flashProgress">1 / 10</div>
+  <div class="flash-card-container" onclick="flipCard()">
+    <div class="flash-card" id="flashCard">
+      <div class="flash-front">
+        <div class="flash-word" id="flashWord">learn</div>
+        <div class="flash-hint">탭하면 뜻이 보여요!</div>
+      </div>
+      <div class="flash-back">
+        <div class="flash-meaning" id="flashMeaning">배우다</div>
+        <div class="flash-eng-small" id="flashEngSmall">learn</div>
+      </div>
+    </div>
+  </div>
+  <div class="flash-nav">
+    <button class="btn btn-outline" id="flashPrev" onclick="flashPrev()">← 이전</button>
+    <button class="btn btn-primary" id="flashNext" onclick="flashNext()">다음 →</button>
+  </div>
+</div>
+
+<!-- ==================== QUIZ ==================== -->
+<div id="quiz" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
+    <h2>❓ 4지선다 퀴즈</h2>
+  </div>
+  <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="quizProgressFill"></div></div>
+  <div class="quiz-question-card">
+    <div class="quiz-label" id="quizLabel">다음 단어의 뜻은?</div>
+    <div class="quiz-word" id="quizWord">learn</div>
+  </div>
+  <div class="quiz-options" id="quizOptions"></div>
+</div>
+
+<!-- ==================== MATCH ==================== -->
+<div id="match" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
+    <h2>🔗 짝 맞추기</h2>
+  </div>
+  <div class="match-score" id="matchScore">0 / 10</div>
+  <div class="match-grid" id="matchGrid"></div>
+</div>
+
+<!-- ==================== SPELLING ==================== -->
+<div id="spelling" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
+    <h2>⌨️ 스펠링 도전</h2>
+  </div>
+  <div class="quiz-progress-bar"><div class="quiz-progress-fill" id="spellProgressFill"></div></div>
+  <div class="spell-prompt">
+    <div class="spell-meaning" id="spellMeaning">배우다</div>
+    <div class="spell-hint" id="spellHint">5글자</div>
+  </div>
+  <div class="spell-input-area" id="spellInputArea"></div>
+  <div class="spell-keyboard" id="spellKeyboard"></div>
+</div>
+
+<!-- ==================== MEMORY ==================== -->
+<div id="memory" class="screen">
+  <div class="top-bar">
+    <button class="back-btn" onclick="showScreen('gameSelect')">←</button>
+    <h2>🧠 기억력 게임</h2>
+  </div>
+  <div class="memory-info">
+    <span id="memoryPairs">찾은 짝: 0 / 5</span>
+    <span id="memoryTries">시도: 0</span>
+  </div>
+  <div class="memory-grid" id="memoryGrid"></div>
+</div>
+
+<!-- ==================== RESULT ==================== -->
+<div id="result" class="screen">
+  <div class="result-container">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <div class="result-title" id="resultTitle">잘했어요!</div>
+    <div class="result-score" id="resultScore"></div>
+    <div class="result-message" id="resultMessage"></div>
+    <div class="result-actions">
+      <button class="btn btn-primary" onclick="showScreen('gameSelect')">🎮 다른 게임 하기</button>
+      <button class="btn btn-outline" onclick="replayGame()">🔄 다시 하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== DELETE MODAL ==================== -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <h3>정말 삭제할까요?</h3>
+    <p id="deleteModalName"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDeleteModal()">취소</button>
+      <button class="btn btn-accent" onclick="confirmDelete()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== STATE ====================
+let currentWords = [];
+let currentSetName = '';
+let lastGame = '';
+
+// ==================== NAVIGATION ====================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+  if (id === 'home') renderSavedList();
+  if (id === 'input') buildInputRows();
+}
+
+// ==================== SAVED SETS (localStorage) ====================
+function getSaved() {
+  try { return JSON.parse(localStorage.getItem('wordSets') || '[]'); } catch { return []; }
+}
+function saveSets(sets) { localStorage.setItem('wordSets', JSON.stringify(sets)); }
+
+function renderSavedList() {
+  const sets = getSaved();
+  const list = document.getElementById('savedList');
+  if (sets.length === 0) {
+    list.innerHTML = '<div style="text-align:center;color:#ccc;font-size:13px;padding:20px;">아직 저장된 단어장이 없어요</div>';
+    return;
+  }
+  list.innerHTML = sets.map((s, i) => `
+    <div class="saved-item">
+      <div class="saved-item-info" onclick="loadSet(${i})">
+        <div class="saved-item-title">${esc(s.name)}</div>
+        <div class="saved-item-preview">${s.words.slice(0,3).map(w => w.eng).join(', ')}...</div>
+      </div>
+      <div class="saved-item-actions">
+        <button class="play-btn" onclick="loadSet(${i})">▶</button>
+        <button class="del-btn" onclick="askDelete(${i})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+let deleteIdx = -1;
+function askDelete(i) {
+  deleteIdx = i;
+  const sets = getSaved();
+  document.getElementById('deleteModalName').textContent = `"${sets[i].name}" 단어장을 삭제합니다.`;
+  document.getElementById('deleteModal').classList.add('active');
+}
+function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('active'); }
+function confirmDelete() {
+  const sets = getSaved();
+  sets.splice(deleteIdx, 1);
+  saveSets(sets);
+  closeDeleteModal();
+  renderSavedList();
+}
+
+function loadSet(i) {
+  const sets = getSaved();
+  currentWords = sets[i].words;
+  currentSetName = sets[i].name;
+  document.getElementById('gameSetTitle').textContent = `"${currentSetName}" — ${currentWords.length}개 단어`;
+  showScreen('gameSelect');
+}
+
+// ==================== INPUT ====================
+function buildInputRows() {
+  const list = document.getElementById('wordInputList');
+  if (list.children.length > 0) return; // already built
+  list.innerHTML = '';
+  for (let i = 0; i < 10; i++) {
+    list.innerHTML += `
+      <div class="word-input-row">
+        <div class="word-num">${i + 1}</div>
+        <input type="text" class="eng-input" placeholder="영어 단어" autocapitalize="none" autocorrect="off" spellcheck="false">
+        <span class="word-divider">=</span>
+        <input type="text" class="kor-input" placeholder="한글 뜻">
+      </div>
+    `;
+  }
+}
+
+function fillSample() {
+  const samples = [
+    { eng: 'learn', kor: '배우다, 외우다' },
+    { eng: 'speak', kor: '말하다' },
+    { eng: 'something', kor: '무엇인가, 어떤 것' },
+    { eng: 'try', kor: '해보다, 노력하다' },
+    { eng: 'enjoy', kor: '즐기다' },
+    { eng: 'because', kor: '왜냐하면' },
+    { eng: 'than', kor: '~보다' },
+    { eng: 'before', kor: '~앞에, 이전에' },
+    { eng: 'oneself', kor: '자기 자신' },
+    { eng: 'understand', kor: '이해하다, 알다' },
+  ];
+  document.getElementById('setName').value = '우선순위 영단어 1~10';
+  const engs = document.querySelectorAll('.eng-input');
+  const kors = document.querySelectorAll('.kor-input');
+  samples.forEach((s, i) => { engs[i].value = s.eng; kors[i].value = s.kor; });
+}
+
+function getInputWords() {
+  const engs = document.querySelectorAll('.eng-input');
+  const kors = document.querySelectorAll('.kor-input');
+  const words = [];
+  for (let i = 0; i < 10; i++) {
+    const eng = engs[i].value.trim();
+    const kor = kors[i].value.trim();
+    if (eng && kor) words.push({ eng, kor });
+  }
+  return words;
+}
+
+function startGames() {
+  const words = getInputWords();
+  if (words.length < 4) { alert('최소 4개 이상 단어를 입력해주세요!'); return; }
+  currentWords = words;
+  currentSetName = document.getElementById('setName').value.trim() || '내 단어장';
+  document.getElementById('gameSetTitle').textContent = `"${currentSetName}" — ${currentWords.length}개 단어`;
+  showScreen('gameSelect');
+}
+
+function saveAndStart() {
+  const words = getInputWords();
+  if (words.length < 4) { alert('최소 4개 이상 단어를 입력해주세요!'); return; }
+  const name = document.getElementById('setName').value.trim() || '내 단어장';
+  const sets = getSaved();
+  sets.push({ name, words, created: Date.now() });
+  saveSets(sets);
+  currentWords = words;
+  currentSetName = name;
+  document.getElementById('gameSetTitle').textContent = `"${currentSetName}" — ${currentWords.length}개 단어`;
+  // clear input for next time
+  document.getElementById('wordInputList').innerHTML = '';
+  document.getElementById('setName').value = '';
+  showScreen('gameSelect');
+}
+
+// ==================== UTILS ====================
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+// ==================== FLASHCARD ====================
+let flashIdx = 0;
+function startFlashcard() {
+  lastGame = 'flashcard';
+  flashIdx = 0;
+  updateFlashcard();
+  showScreen('flashcard');
+}
+function updateFlashcard() {
+  const w = currentWords[flashIdx];
+  document.getElementById('flashWord').textContent = w.eng;
+  document.getElementById('flashMeaning').textContent = w.kor;
+  document.getElementById('flashEngSmall').textContent = w.eng;
+  document.getElementById('flashProgress').textContent = `${flashIdx + 1} / ${currentWords.length}`;
+  document.getElementById('flashCard').classList.remove('flipped');
+  document.getElementById('flashPrev').style.visibility = flashIdx === 0 ? 'hidden' : 'visible';
+  document.getElementById('flashNext').textContent = flashIdx === currentWords.length - 1 ? '완료 ✓' : '다음 →';
+}
+function flipCard() { document.getElementById('flashCard').classList.toggle('flipped'); }
+function flashPrev() { if (flashIdx > 0) { flashIdx--; updateFlashcard(); } }
+function flashNext() {
+  if (flashIdx < currentWords.length - 1) { flashIdx++; updateFlashcard(); }
+  else { showResult('🃏', '카드 학습 완료!', `${currentWords.length}개 단어를 모두 봤어요!`, '다음에도 복습해봐요!'); }
+}
+
+// ==================== QUIZ ====================
+let quizOrder = [], quizIdx = 0, quizScore = 0, quizMode = 'eng2kor';
+function startQuiz() {
+  lastGame = 'quiz';
+  quizOrder = shuffle(currentWords);
+  quizIdx = 0; quizScore = 0;
+  // random mode
+  quizMode = Math.random() < 0.5 ? 'eng2kor' : 'kor2eng';
+  showScreen('quiz');
+  renderQuiz();
+}
+function renderQuiz() {
+  const total = quizOrder.length;
+  document.getElementById('quizProgressFill').style.width = `${(quizIdx / total) * 100}%`;
+
+  if (quizIdx >= total) {
+    const pct = Math.round((quizScore / total) * 100);
+    const emoji = pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪';
+    const msg = pct >= 80 ? '대단해요! 완벽에 가까워요!' : pct >= 50 ? '잘하고 있어요! 조금만 더!' : '다시 도전해봐요! 할 수 있어요!';
+    showResult(emoji, '퀴즈 완료!', `${total}문제 중 ${quizScore}개 정답 (${pct}%)`, msg);
+    return;
+  }
+
+  const w = quizOrder[quizIdx];
+  const label = quizMode === 'eng2kor' ? '다음 단어의 뜻은?' : '다음 뜻의 영어 단어는?';
+  const question = quizMode === 'eng2kor' ? w.eng : w.kor;
+  document.getElementById('quizLabel').textContent = `${quizIdx + 1}/${total} ${label}`;
+  document.getElementById('quizWord').textContent = question;
+
+  // build options
+  const correctAns = quizMode === 'eng2kor' ? w.kor : w.eng;
+  let wrongPool = currentWords.filter(x => x.eng !== w.eng);
+  wrongPool = shuffle(wrongPool).slice(0, 3);
+  const wrongs = wrongPool.map(x => quizMode === 'eng2kor' ? x.kor : x.eng);
+  let options = shuffle([correctAns, ...wrongs]);
+
+  const container = document.getElementById('quizOptions');
+  container.innerHTML = options.map(o => `
+    <div class="quiz-option" onclick="pickQuiz(this, '${esc(correctAns.replace(/'/g, "\\'"))}')">
+      ${esc(o)}
+    </div>
+  `).join('');
+}
+
+function pickQuiz(el, correct) {
+  const allOpts = document.querySelectorAll('.quiz-option');
+  allOpts.forEach(o => o.classList.add('disabled'));
+
+  if (el.textContent.trim() === correct) {
+    el.classList.add('correct');
+    quizScore++;
+  } else {
+    el.classList.add('wrong');
+    allOpts.forEach(o => { if (o.textContent.trim() === correct) o.classList.add('correct'); });
+  }
+  setTimeout(() => { quizIdx++; renderQuiz(); }, 1000);
+}
+
+// ==================== MATCH ====================
+let matchSelected = null, matchPairs = 0, matchTotal = 0;
+function startMatch() {
+  lastGame = 'match';
+  matchSelected = null; matchPairs = 0;
+  // take up to 8 words for manageable grid
+  const words = shuffle(currentWords).slice(0, 8);
+  matchTotal = words.length;
+
+  const engTiles = words.map((w, i) => ({ id: i, type: 'eng', text: w.eng, pairId: i }));
+  const korTiles = words.map((w, i) => ({ id: i, type: 'kor', text: w.kor, pairId: i }));
+  const allTiles = shuffle([...engTiles, ...korTiles]);
+
+  document.getElementById('matchScore').textContent = `0 / ${matchTotal}`;
+  const grid = document.getElementById('matchGrid');
+  grid.innerHTML = allTiles.map((t, idx) => `
+    <div class="match-tile ${t.type}" data-pair="${t.pairId}" data-idx="${idx}" onclick="pickMatch(this)">
+      ${esc(t.text)}
+    </div>
+  `).join('');
+  showScreen('match');
+}
+function pickMatch(el) {
+  if (el.classList.contains('matched')) return;
+  if (matchSelected && matchSelected === el) { el.classList.remove('selected'); matchSelected = null; return; }
+
+  el.classList.add('selected');
+  if (!matchSelected) { matchSelected = el; return; }
+
+  const prev = matchSelected;
+  const pairA = prev.dataset.pair;
+  const pairB = el.dataset.pair;
+  const typeA = prev.classList.contains('eng') ? 'eng' : 'kor';
+  const typeB = el.classList.contains('eng') ? 'eng' : 'kor';
+
+  if (pairA === pairB && typeA !== typeB) {
+    prev.classList.remove('selected'); prev.classList.add('matched');
+    el.classList.remove('selected'); el.classList.add('matched');
+    matchPairs++;
+    document.getElementById('matchScore').textContent = `${matchPairs} / ${matchTotal}`;
+    if (matchPairs === matchTotal) {
+      setTimeout(() => showResult('🔗', '짝 맞추기 완료!', `${matchTotal}개 짝을 모두 찾았어요!`, '기억력이 좋아요!'), 500);
+    }
+  } else {
+    prev.classList.add('wrong-flash'); el.classList.add('wrong-flash');
+    setTimeout(() => {
+      prev.classList.remove('selected', 'wrong-flash');
+      el.classList.remove('selected', 'wrong-flash');
+    }, 500);
+  }
+  matchSelected = null;
+}
+
+// ==================== SPELLING ====================
+let spellOrder = [], spellIdx = 0, spellScore = 0, spellCurrent = '', spellPos = 0;
+function startSpelling() {
+  lastGame = 'spelling';
+  spellOrder = shuffle(currentWords);
+  spellIdx = 0; spellScore = 0;
+  showScreen('spelling');
+  renderSpell();
+}
+function renderSpell() {
+  const total = spellOrder.length;
+  document.getElementById('spellProgressFill').style.width = `${(spellIdx / total) * 100}%`;
+
+  if (spellIdx >= total) {
+    const pct = Math.round((spellScore / total) * 100);
+    const emoji = pct >= 80 ? '🏆' : pct >= 50 ? '👍' : '💪';
+    const msg = pct >= 80 ? '스펠링 마스터!' : pct >= 50 ? '점점 나아지고 있어요!' : '다시 도전하면 더 잘할 수 있어요!';
+    showResult(emoji, '스펠링 도전 완료!', `${total}문제 중 ${spellScore}개 정답 (${pct}%)`, msg);
+    return;
+  }
+
+  const w = spellOrder[spellIdx];
+  spellCurrent = w.eng.toLowerCase();
+  spellPos = 0;
+  document.getElementById('spellMeaning').textContent = w.kor;
+  document.getElementById('spellHint').textContent = `${spellCurrent.length}글자 | 첫 글자: ${spellCurrent[0]}`;
+
+  // letter boxes
+  const area = document.getElementById('spellInputArea');
+  area.innerHTML = '';
+  for (let i = 0; i < spellCurrent.length; i++) {
+    area.innerHTML += `<div class="spell-letter-box" id="sbox${i}"></div>`;
+  }
+
+  // keyboard
+  const keys = 'qwertyuiopasdfghjklzxcvbnm';
+  const kb = document.getElementById('spellKeyboard');
+  kb.innerHTML = '';
+  for (const k of keys) {
+    kb.innerHTML += `<button class="spell-key" onclick="pressSpellKey('${k}')">${k}</button>`;
+  }
+  kb.innerHTML += `<button class="spell-key wide" onclick="pressSpellKey('back')">← 지우기</button>`;
+  kb.innerHTML += `<button class="spell-key wide" onclick="pressSpellKey('skip')" style="background:var(--warning);">건너뛰기</button>`;
+}
+
+function pressSpellKey(k) {
+  if (k === 'skip') {
+    // show answer
+    for (let i = 0; i < spellCurrent.length; i++) {
+      const box = document.getElementById(`sbox${i}`);
+      box.textContent = spellCurrent[i];
+      box.classList.add('wrong-letter');
+    }
+    setTimeout(() => { spellIdx++; renderSpell(); }, 1200);
+    return;
+  }
+  if (k === 'back') {
+    if (spellPos > 0) {
+      spellPos--;
+      const box = document.getElementById(`sbox${spellPos}`);
+      box.textContent = '';
+      box.classList.remove('filled', 'correct-letter', 'wrong-letter');
+    }
+    return;
+  }
+  if (spellPos >= spellCurrent.length) return;
+  const box = document.getElementById(`sbox${spellPos}`);
+  box.textContent = k;
+  box.classList.add('filled');
+  spellPos++;
+
+  // check when all filled
+  if (spellPos === spellCurrent.length) {
+    let allCorrect = true;
+    for (let i = 0; i < spellCurrent.length; i++) {
+      const b = document.getElementById(`sbox${i}`);
+      if (b.textContent === spellCurrent[i]) {
+        b.classList.add('correct-letter');
+      } else {
+        b.classList.add('wrong-letter');
+        allCorrect = false;
+      }
+    }
+    if (allCorrect) spellScore++;
+    setTimeout(() => { spellIdx++; renderSpell(); }, 1200);
+  }
+}
+
+// ==================== MEMORY ====================
+let memoryCards = [], memoryFlipped = [], memoryMatched = 0, memoryTries = 0, memoryTotal = 0, memoryLock = false;
+function startMemory() {
+  lastGame = 'memory';
+  memoryFlipped = []; memoryMatched = 0; memoryTries = 0; memoryLock = false;
+
+  // take 5 words (= 10 cards in 4-col grid, or 8 words = 16 cards)
+  const count = currentWords.length >= 8 ? 8 : 5;
+  const words = shuffle(currentWords).slice(0, count);
+  memoryTotal = words.length;
+
+  const cards = [];
+  words.forEach((w, i) => {
+    cards.push({ id: i * 2, pairId: i, text: w.eng, type: 'eng' });
+    cards.push({ id: i * 2 + 1, pairId: i, text: w.kor, type: 'kor' });
+  });
+  memoryCards = shuffle(cards);
+
+  document.getElementById('memoryPairs').textContent = `찾은 짝: 0 / ${memoryTotal}`;
+  document.getElementById('memoryTries').textContent = `시도: 0`;
+
+  const grid = document.getElementById('memoryGrid');
+  grid.style.gridTemplateColumns = count > 5 ? 'repeat(4, 1fr)' : 'repeat(4, 1fr)';
+  grid.innerHTML = memoryCards.map((c, idx) => `
+    <div class="memory-card-wrap" onclick="flipMemory(${idx})">
+      <div class="memory-card" id="mc${idx}" data-pair="${c.pairId}" data-type="${c.type}">
+        <div class="memory-card-front">?</div>
+        <div class="memory-card-back">${esc(c.text)}</div>
+      </div>
+    </div>
+  `).join('');
+
+  showScreen('memory');
+}
+
+function flipMemory(idx) {
+  if (memoryLock) return;
+  const card = document.getElementById(`mc${idx}`);
+  if (card.classList.contains('face-up') || card.classList.contains('matched')) return;
+
+  card.classList.add('face-up');
+  memoryFlipped.push(idx);
+
+  if (memoryFlipped.length === 2) {
+    memoryLock = true;
+    memoryTries++;
+    document.getElementById('memoryTries').textContent = `시도: ${memoryTries}`;
+
+    const [a, b] = memoryFlipped;
+    const cardA = document.getElementById(`mc${a}`);
+    const cardB = document.getElementById(`mc${b}`);
+
+    if (cardA.dataset.pair === cardB.dataset.pair && cardA.dataset.type !== cardB.dataset.type) {
+      cardA.classList.add('matched');
+      cardB.classList.add('matched');
+      memoryMatched++;
+      document.getElementById('memoryPairs').textContent = `찾은 짝: ${memoryMatched} / ${memoryTotal}`;
+      memoryFlipped = [];
+      memoryLock = false;
+      if (memoryMatched === memoryTotal) {
+        setTimeout(() => showResult('🧠', '기억력 게임 완료!', `${memoryTotal}쌍을 ${memoryTries}번 만에 찾았어요!`, memoryTries <= memoryTotal * 2 ? '기억력 천재!' : '연습하면 더 빨라져요!'), 600);
+      }
+    } else {
+      setTimeout(() => {
+        cardA.classList.remove('face-up');
+        cardB.classList.remove('face-up');
+        memoryFlipped = [];
+        memoryLock = false;
+      }, 800);
+    }
+  }
+}
+
+// ==================== RESULT ====================
+function showResult(emoji, title, score, message) {
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultScore').textContent = score;
+  document.getElementById('resultMessage').textContent = message;
+  showScreen('result');
+}
+
+function replayGame() {
+  switch (lastGame) {
+    case 'flashcard': startFlashcard(); break;
+    case 'quiz': startQuiz(); break;
+    case 'match': startMatch(); break;
+    case 'spelling': startSpelling(); break;
+    case 'memory': startMemory(); break;
+    default: showScreen('gameSelect');
+  }
+}
+
+// ==================== INIT ====================
+renderSavedList();
+</script>
+</body>
+</html>
